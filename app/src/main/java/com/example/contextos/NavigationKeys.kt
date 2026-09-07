@@ -1,0 +1,8 @@
+package com.example.contextos
+
+import androidx.navigation3.runtime.NavKey
+import kotlinx.serialization.Serializable
+
+@Serializable data object Main : NavKey
+@Serializable data class ContextDetailNavKey(val snapshotId: String) : NavKey
+
