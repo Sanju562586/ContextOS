@@ -7,12 +7,16 @@ import com.example.contextos.domain.usecase.MarkSnapshotRestoredUseCase
 import com.example.contextos.domain.usecase.SaveSnapshotUseCase
 import com.example.contextos.domain.usecase.TogglePinSnapshotUseCase
 import com.example.contextos.models.ContextSnapshot
+import com.example.contextos.voice.VoiceCommandManager
+import com.example.contextos.voice.VoiceState
 import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -30,19 +34,22 @@ class ContextListViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeRepository: FakeSnapshotRepository
+    private lateinit var fakeVoiceCommandManager: FakeVoiceCommandManager
     private lateinit var viewModel: ContextListViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         fakeRepository = FakeSnapshotRepository()
+        fakeVoiceCommandManager = FakeVoiceCommandManager()
         viewModel = ContextListViewModel(
             getSnapshotsUseCase = GetSnapshotsUseCase(fakeRepository),
             saveSnapshotUseCase = SaveSnapshotUseCase(fakeRepository),
             deleteSnapshotUseCase = DeleteSnapshotUseCase(fakeRepository),
             togglePinSnapshotUseCase = TogglePinSnapshotUseCase(fakeRepository),
             markSnapshotRestoredUseCase = MarkSnapshotRestoredUseCase(fakeRepository),
-            contextRestoreManager = FakeContextRestoreManager()
+            contextRestoreManager = FakeContextRestoreManager(),
+            voiceCommandManager = fakeVoiceCommandManager
         )
     }
 
@@ -145,6 +152,32 @@ class ContextListViewModelTest {
 
         collectJob1.cancel()
         collectJob2.cancel()
+    }
+
+    @Test
+    fun openVoiceDialog_setsShowVoiceDialogTrueAndStartsListening() = runTest(testDispatcher) {
+        assertFalse(viewModel.showVoiceDialog.value)
+
+        viewModel.openVoiceDialog()
+
+        assertTrue(viewModel.showVoiceDialog.value)
+        assertEquals(VoiceState.Listening, viewModel.voiceState.value)
+    }
+
+    @Test
+    fun closeVoiceDialog_setsShowVoiceDialogFalseAndResetsState() = runTest(testDispatcher) {
+        viewModel.openVoiceDialog()
+        assertTrue(viewModel.showVoiceDialog.value)
+
+        viewModel.closeVoiceDialog()
+        assertFalse(viewModel.showVoiceDialog.value)
+        assertEquals(VoiceState.Idle, viewModel.voiceState.value)
+    }
+
+    @Test
+    fun submitManualVoiceCommand_delegatesToManager() = runTest(testDispatcher) {
+        viewModel.submitManualVoiceCommand("Resume Project Alpha")
+        assertEquals(VoiceState.Processing("Resume Project Alpha"), viewModel.voiceState.value)
     }
 }
 
@@ -249,5 +282,26 @@ private class FakeSnapshotRepository : SnapshotRepository {
 
     override suspend fun seedInitialData() {
         // no-op for fake
+    }
+}
+
+private class FakeVoiceCommandManager : VoiceCommandManager {
+    private val _listeningState = MutableStateFlow<VoiceState>(VoiceState.Idle)
+    override val listeningState: StateFlow<VoiceState> = _listeningState
+
+    override fun startListening(candidateSnapshots: List<ContextSnapshot>?) {
+        _listeningState.value = VoiceState.Listening
+    }
+
+    override fun stopListening() {
+        _listeningState.value = VoiceState.Idle
+    }
+
+    override fun processText(text: String, candidateSnapshots: List<ContextSnapshot>?) {
+        _listeningState.value = VoiceState.Processing(text)
+    }
+
+    override fun resetState() {
+        _listeningState.value = VoiceState.Idle
     }
 }
