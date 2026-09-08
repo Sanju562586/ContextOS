@@ -56,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.contextos.models.ContextSnapshot
 import com.example.contextos.ui.contextlist.components.ContextCard
 import com.example.contextos.ui.restore.RestoreProgressDialog
+import com.example.contextos.ui.voice.VoiceCommandDialog
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,12 +64,14 @@ import kotlinx.coroutines.flow.collectLatest
 fun ContextListScreen(
     viewModel: ContextListViewModel,
     onSnapshotClick: (ContextSnapshot) -> Unit,
-    onVoiceClick: () -> Unit,
+    onVoiceClick: () -> Unit = {},
     onSaveContextClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val restoreProgress by viewModel.restoreProgress.collectAsStateWithLifecycle()
+    val showVoiceDialog by viewModel.showVoiceDialog.collectAsStateWithLifecycle()
+    val voiceState by viewModel.voiceState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
@@ -127,7 +130,11 @@ fun ContextListScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                    IconButton(onClick = onVoiceClick) {
+                    IconButton(onClick = {
+                        val currentSnapshots = (uiState as? ContextListUiState.Success)?.snapshots ?: emptyList()
+                        viewModel.openVoiceDialog(currentSnapshots)
+                        onVoiceClick()
+                    }) {
                         Icon(
                             imageVector = Icons.Filled.Mic,
                             contentDescription = "Voice Resume",
@@ -194,7 +201,10 @@ fun ContextListScreen(
                             item {
                                 QuickResumeHeader(
                                     snapshotCount = state.snapshots.size,
-                                    onVoiceClick = onVoiceClick
+                                    onVoiceClick = {
+                                        viewModel.openVoiceDialog(state.snapshots)
+                                        onVoiceClick()
+                                    }
                                 )
                             }
 
@@ -225,6 +235,31 @@ fun ContextListScreen(
             RestoreProgressDialog(
                 progress = progress,
                 onDismiss = { viewModel.dismissRestore() }
+            )
+        }
+
+        // Voice Command Restoration Dialog
+        if (showVoiceDialog) {
+            val currentSnapshots = (uiState as? ContextListUiState.Success)?.snapshots ?: emptyList()
+            VoiceCommandDialog(
+                voiceState = voiceState,
+                candidateSnapshots = currentSnapshots,
+                onStartListening = { viewModel.startVoiceListening(currentSnapshots) },
+                onStopListening = { viewModel.stopVoiceListening() },
+                onSubmitManualCommand = { text -> viewModel.submitManualVoiceCommand(text, currentSnapshots) },
+                onResumeContext = { snapshot ->
+                    viewModel.closeVoiceDialog()
+                    viewModel.onResumeClicked(snapshot)
+                },
+                onSaveContext = { _ ->
+                    viewModel.closeVoiceDialog()
+                    onSaveContextClick()
+                },
+                onDeleteContext = { snapshot ->
+                    viewModel.closeVoiceDialog()
+                    viewModel.onDeleteClicked(snapshot.id)
+                },
+                onDismiss = { viewModel.closeVoiceDialog() }
             )
         }
     }
