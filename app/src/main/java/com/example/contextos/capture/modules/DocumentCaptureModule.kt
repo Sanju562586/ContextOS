@@ -41,7 +41,11 @@ class DocumentCaptureModule @Inject constructor(
             // Some providers or temporary URIs don't support persistable permissions
         }
 
-        var displayName = "Document"
+        val fallbackName = (uri.lastPathSegment ?: uri.path ?: "Document")
+            .substringAfterLast('/')
+            .substringAfterLast('\\')
+            .ifBlank { "Document" }
+        var displayName = fallbackName
         var fileSizeBytes = 0L
         val mimeType = contentResolver.getType(uri) ?: "*/*"
 
@@ -50,7 +54,10 @@ class DocumentCaptureModule @Inject constructor(
                 if (cursor.moveToFirst()) {
                     val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                     if (nameIndex != -1) {
-                        displayName = cursor.getString(nameIndex) ?: displayName
+                        val queriedName = cursor.getString(nameIndex)
+                        if (!queriedName.isNullOrBlank()) {
+                            displayName = queriedName
+                        }
                     }
                     val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
                     if (sizeIndex != -1 && !cursor.isNull(sizeIndex)) {
@@ -59,7 +66,7 @@ class DocumentCaptureModule @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            displayName = uri.lastPathSegment ?: "Document"
+            // Keep fallback displayName
         }
 
         return ContextItem.createDocument(
