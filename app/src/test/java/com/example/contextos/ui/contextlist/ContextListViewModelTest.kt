@@ -83,6 +83,24 @@ class ContextListViewModelTest {
     }
 
     @Test
+    fun seedSampleProjectBeta_addsProjectBeta() = runTest(testDispatcher) {
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        testScheduler.advanceUntilIdle()
+
+        viewModel.seedSampleProjectBeta()
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state is ContextListUiState.Success)
+        val snapshots = (state as ContextListUiState.Success).snapshots
+        assertEquals(1, snapshots.size)
+        assertEquals("Project Beta", snapshots.first().name)
+        collectJob.cancel()
+    }
+
+    @Test
     fun onDeleteClicked_removesSnapshot() = runTest(testDispatcher) {
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect()
@@ -121,13 +139,37 @@ private class FakeSnapshotRepository : SnapshotRepository {
         snapshots.value = snapshots.value - id
     }
 
-    override suspend fun markRestored(id: String, timestamp: Long) {
+    override suspend fun markResumed(id: String, timestamp: Long) {
         val current = snapshots.value[id] ?: return
-        snapshots.value = snapshots.value + (id to current.copy(lastRestoredAt = timestamp))
+        snapshots.value = snapshots.value + (id to current.copy(lastResumedAt = timestamp))
+    }
+
+    override suspend fun markRestored(id: String, timestamp: Long) {
+        markResumed(id, timestamp)
     }
 
     override suspend fun togglePin(id: String, isPinned: Boolean) {
         val current = snapshots.value[id] ?: return
         snapshots.value = snapshots.value + (id to current.copy(isPinned = isPinned))
+    }
+
+    override fun getItemsForSnapshot(snapshotId: String): Flow<List<com.example.contextos.models.ContextItem>> {
+        return snapshots.map { it[snapshotId]?.items ?: emptyList() }
+    }
+
+    override suspend fun saveContextItem(item: com.example.contextos.models.ContextItem) {
+        val snapshot = snapshots.value[item.snapshotId] ?: return
+        val updatedItems = snapshot.items.filterNot { it.id == item.id } + item
+        snapshots.value = snapshots.value + (snapshot.id to snapshot.copy(items = updatedItems))
+    }
+
+    override suspend fun deleteContextItem(itemId: String) {
+        snapshots.value = snapshots.value.mapValues { (_, snapshot) ->
+            snapshot.copy(items = snapshot.items.filterNot { it.id == itemId })
+        }
+    }
+
+    override suspend fun seedInitialData() {
+        // no-op for fake
     }
 }

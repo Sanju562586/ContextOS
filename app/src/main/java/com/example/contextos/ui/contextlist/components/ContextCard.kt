@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Link
@@ -143,7 +144,7 @@ fun ContextCard(
             }
 
             // AI Briefing Section (if available)
-            if (snapshot.aiSummary != null && snapshot.aiSummary.executiveBrief.isNotBlank()) {
+            if (!snapshot.aiSummary.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Surface(
                     shape = RoundedCornerShape(10.dp),
@@ -162,7 +163,7 @@ fun ContextCard(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = snapshot.aiSummary.executiveBrief,
+                            text = snapshot.aiSummary,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 3,
@@ -229,6 +230,16 @@ fun ContextCard(
                         )
                     )
                 }
+                if (snapshot.clipboards.isNotEmpty()) {
+                    SuggestionChip(
+                        onClick = {},
+                        label = { Text("${snapshot.clipboards.size} Clips") },
+                        icon = { Icon(Icons.Filled.ContentPaste, contentDescription = null, modifier = Modifier.size(14.dp)) },
+                        colors = SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                }
             }
 
             // Bottom Actions: Resume Button
@@ -238,9 +249,10 @@ fun ContextCard(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (snapshot.lastRestoredAt != null) {
+                val restoredAt = snapshot.lastRestoredAt
+                if (restoredAt != null) {
                     Text(
-                        text = "Last resumed ${dateFormatter.format(Date(snapshot.lastRestoredAt))}",
+                        text = "Last resumed ${dateFormatter.format(Date(restoredAt))}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )

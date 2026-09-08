@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -168,7 +169,7 @@ private fun DetailContent(
         }
 
         // AI Summary Section
-        if (snapshot.aiSummary != null) {
+        if (!snapshot.aiSummary.isNullOrBlank()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -195,11 +196,11 @@ private fun DetailContent(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = snapshot.aiSummary.executiveBrief,
+                        text = snapshot.aiSummary,
                         style = MaterialTheme.typography.bodyMedium
                     )
 
-                    if (snapshot.aiSummary.nextActions.isNotEmpty()) {
+                    if (snapshot.nextActions.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = "Suggested Next Actions:",
@@ -207,7 +208,7 @@ private fun DetailContent(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        snapshot.aiSummary.nextActions.forEach { action ->
+                        snapshot.nextActions.forEach { action ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -249,7 +250,7 @@ private fun DetailContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = app.appName,
+                                text = app.appName ?: app.displayName,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.weight(1f)
@@ -284,15 +285,17 @@ private fun DetailContent(
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = link.title.ifBlank { link.url },
+                                text = link.title.ifBlank { link.url ?: "" },
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            Text(
-                                text = link.url,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            if (!link.url.isNullOrBlank()) {
+                                Text(
+                                    text = link.url,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 }
@@ -377,6 +380,26 @@ private fun DetailContent(
                     ) {
                         Text(
                             text = note.content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Clipboard Snippets
+        if (snapshot.clipboards.isNotEmpty()) {
+            SectionHeader(title = "Clipboard Snippets", icon = Icons.Filled.ContentPaste)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                snapshot.clipboards.forEach { clip ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ) {
+                        Text(
+                            text = clip.content,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(12.dp)
                         )

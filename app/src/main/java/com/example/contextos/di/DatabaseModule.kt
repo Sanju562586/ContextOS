@@ -3,6 +3,7 @@ package com.example.contextos.di
 import android.content.Context
 import androidx.room.Room
 import com.example.contextos.data.local.ContextOsDatabase
+import com.example.contextos.data.local.dao.ContextItemDao
 import com.example.contextos.data.local.dao.SnapshotDao
 import dagger.Module
 import dagger.Provides
@@ -32,5 +33,10 @@ object DatabaseModule {
     @Provides
     fun provideSnapshotDao(database: ContextOsDatabase): SnapshotDao {
         return database.snapshotDao()
+    }
+
+    @Provides
+    fun provideContextItemDao(database: ContextOsDatabase): ContextItemDao {
+        return database.contextItemDao()
     }
 }

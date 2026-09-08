@@ -5,97 +5,64 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
-import com.example.contextos.data.local.entity.AiSummaryEntity
-import com.example.contextos.data.local.entity.AppItemEntity
-import com.example.contextos.data.local.entity.DocumentItemEntity
-import com.example.contextos.data.local.entity.ImageArtifactEntity
-import com.example.contextos.data.local.entity.LinkItemEntity
-import com.example.contextos.data.local.entity.NoteItemEntity
+import androidx.room.Update
+import com.example.contextos.data.local.entity.ContextItemEntity
 import com.example.contextos.data.local.entity.SnapshotEntity
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Data Access Object for Context Snapshots and their relations.
+ */
 @Dao
 interface SnapshotDao {
 
     @Transaction
-    @Query("SELECT * FROM snapshots ORDER BY isPinned DESC, createdAt DESC")
-    fun getSnapshotsWithDetails(): Flow<List<SnapshotWithDetails>>
+    @Query("SELECT * FROM snapshots ORDER BY isPinned DESC, updatedAt DESC, createdAt DESC")
+    fun getSnapshotsWithItems(): Flow<List<SnapshotWithItems>>
 
     @Transaction
     @Query("SELECT * FROM snapshots WHERE id = :id")
-    fun getSnapshotWithDetailsById(id: String): Flow<SnapshotWithDetails?>
+    fun getSnapshotWithItemsById(id: String): Flow<SnapshotWithItems?>
+
+    @Query("SELECT * FROM snapshots WHERE id = :id")
+    suspend fun getSnapshotEntityById(id: String): SnapshotEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSnapshot(snapshot: SnapshotEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertApps(apps: List<AppItemEntity>)
+    suspend fun insertSnapshots(snapshots: List<SnapshotEntity>)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertLinks(links: List<LinkItemEntity>)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertDocuments(docs: List<DocumentItemEntity>)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertNotes(notes: List<NoteItemEntity>)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertImages(images: List<ImageArtifactEntity>)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAiSummary(summary: AiSummaryEntity)
-
-    @Query("DELETE FROM app_items WHERE snapshotId = :snapshotId")
-    suspend fun deleteAppsBySnapshotId(snapshotId: String)
-
-    @Query("DELETE FROM link_items WHERE snapshotId = :snapshotId")
-    suspend fun deleteLinksBySnapshotId(snapshotId: String)
-
-    @Query("DELETE FROM document_items WHERE snapshotId = :snapshotId")
-    suspend fun deleteDocumentsBySnapshotId(snapshotId: String)
-
-    @Query("DELETE FROM note_items WHERE snapshotId = :snapshotId")
-    suspend fun deleteNotesBySnapshotId(snapshotId: String)
-
-    @Query("DELETE FROM image_artifacts WHERE snapshotId = :snapshotId")
-    suspend fun deleteImagesBySnapshotId(snapshotId: String)
-
-    @Query("DELETE FROM ai_summaries WHERE snapshotId = :snapshotId")
-    suspend fun deleteAiSummaryBySnapshotId(snapshotId: String)
+    @Update
+    suspend fun updateSnapshot(snapshot: SnapshotEntity)
 
     @Query("DELETE FROM snapshots WHERE id = :id")
-    suspend fun deleteSnapshotById(id: String)
+    suspend fun deleteSnapshotById(id: String): Int
 
-    @Query("UPDATE snapshots SET lastRestoredAt = :timestamp WHERE id = :id")
-    suspend fun updateLastRestored(id: String, timestamp: Long)
+    @Query("DELETE FROM snapshots")
+    suspend fun deleteAllSnapshots(): Int
 
-    @Query("UPDATE snapshots SET isPinned = :isPinned WHERE id = :id")
-    suspend fun updatePinned(id: String, isPinned: Boolean)
+    @Query("UPDATE snapshots SET lastResumedAt = :timestamp, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateLastResumed(id: String, timestamp: Long, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE snapshots SET isPinned = :isPinned, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updatePinned(id: String, isPinned: Boolean, updatedAt: Long = System.currentTimeMillis())
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertContextItems(items: List<ContextItemEntity>)
+
+    @Query("DELETE FROM context_items WHERE snapshotId = :snapshotId")
+    suspend fun deleteContextItemsBySnapshotId(snapshotId: String): Int
 
     @Transaction
     suspend fun upsertFullSnapshot(
         snapshot: SnapshotEntity,
-        apps: List<AppItemEntity>,
-        links: List<LinkItemEntity>,
-        documents: List<DocumentItemEntity>,
-        notes: List<NoteItemEntity>,
-        images: List<ImageArtifactEntity>,
-        aiSummary: AiSummaryEntity?
+        items: List<ContextItemEntity>
     ) {
         insertSnapshot(snapshot)
-        deleteAppsBySnapshotId(snapshot.id)
-        deleteLinksBySnapshotId(snapshot.id)
-        deleteDocumentsBySnapshotId(snapshot.id)
-        deleteNotesBySnapshotId(snapshot.id)
-        deleteImagesBySnapshotId(snapshot.id)
-        deleteAiSummaryBySnapshotId(snapshot.id)
-
-        if (apps.isNotEmpty()) insertApps(apps)
-        if (links.isNotEmpty()) insertLinks(links)
-        if (documents.isNotEmpty()) insertDocuments(documents)
-        if (notes.isNotEmpty()) insertNotes(notes)
-        if (images.isNotEmpty()) insertImages(images)
-        if (aiSummary != null) insertAiSummary(aiSummary)
+        deleteContextItemsBySnapshotId(snapshot.id)
+        if (items.isNotEmpty()) {
+            insertContextItems(items)
+        }
     }
 }

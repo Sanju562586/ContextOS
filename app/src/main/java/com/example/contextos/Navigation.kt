@@ -7,6 +7,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import com.example.contextos.ui.capture.CaptureContextScreen
+import com.example.contextos.ui.capture.CaptureContextViewModel
 import com.example.contextos.ui.contextlist.ContextListScreen
 import com.example.contextos.ui.contextlist.ContextListViewModel
 import com.example.contextos.ui.detail.ContextDetailScreen
@@ -29,6 +31,21 @@ fun MainNavigation() {
                     },
                     onVoiceClick = {
                         // Voice trigger callback (for Phase 3)
+                    },
+                    onSaveContextClick = {
+                        backStack.add(CaptureContextNavKey)
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            entry<CaptureContextNavKey> {
+                val viewModel: CaptureContextViewModel = hiltViewModel()
+                CaptureContextScreen(
+                    viewModel = viewModel,
+                    onBackClick = { backStack.removeLastOrNull() },
+                    onSnapshotSaved = { snapshotId ->
+                        backStack.removeLastOrNull()
+                        backStack.add(ContextDetailNavKey(snapshotId))
                     },
                     modifier = Modifier.fillMaxSize()
                 )

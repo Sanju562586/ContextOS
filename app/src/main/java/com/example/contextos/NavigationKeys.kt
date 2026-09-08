@@ -4,5 +4,5 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 @Serializable data object Main : NavKey
+@Serializable data object CaptureContextNavKey : NavKey
 @Serializable data class ContextDetailNavKey(val snapshotId: String) : NavKey
-

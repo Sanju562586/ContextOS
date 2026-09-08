@@ -2,21 +2,15 @@ package com.example.contextos.ui.contextlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.contextos.data.sample.SampleData
 import com.example.contextos.domain.usecase.DeleteSnapshotUseCase
 import com.example.contextos.domain.usecase.GetSnapshotsUseCase
 import com.example.contextos.domain.usecase.MarkSnapshotRestoredUseCase
 import com.example.contextos.domain.usecase.SaveSnapshotUseCase
 import com.example.contextos.domain.usecase.TogglePinSnapshotUseCase
-import com.example.contextos.models.AiSummary
-import com.example.contextos.models.AppItem
 import com.example.contextos.models.ContextSnapshot
-import com.example.contextos.models.DocumentItem
-import com.example.contextos.models.ImageArtifact
-import com.example.contextos.models.LinkItem
-import com.example.contextos.models.NoteItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -85,90 +79,25 @@ class ContextListViewModel @Inject constructor(
 
     fun seedSampleProjectAlpha() {
         viewModelScope.launch {
-            val snapshotId = UUID.randomUUID().toString()
-            val sample = ContextSnapshot(
-                id = snapshotId,
-                name = "Project Alpha",
-                description = "Sprint planning review, architecture diagrams & cloud cost spreadsheets",
-                createdAt = System.currentTimeMillis(),
-                isPinned = true,
-                colorHex = "#1E88E5",
-                apps = listOf(
-                    AppItem(
-                        id = UUID.randomUUID().toString(),
-                        snapshotId = snapshotId,
-                        packageName = "com.google.android.apps.docs",
-                        appName = "Google Drive",
-                        displayOrder = 0,
-                        isPrimaryForSplitScreen = true
-                    ),
-                    AppItem(
-                        id = UUID.randomUUID().toString(),
-                        snapshotId = snapshotId,
-                        packageName = "com.android.chrome",
-                        appName = "Chrome",
-                        displayOrder = 1,
-                        isPrimaryForSplitScreen = true
-                    )
-                ),
-                links = listOf(
-                    LinkItem(
-                        id = UUID.randomUUID().toString(),
-                        snapshotId = snapshotId,
-                        url = "https://github.com/project-alpha/roadmap",
-                        title = "Sprint Roadmap & Milestones"
-                    ),
-                    LinkItem(
-                        id = UUID.randomUUID().toString(),
-                        snapshotId = snapshotId,
-                        url = "https://console.cloud.google.com/billing",
-                        title = "GCP Cloud Cost Overview"
-                    )
-                ),
-                documents = listOf(
-                    DocumentItem(
-                        id = UUID.randomUUID().toString(),
-                        snapshotId = snapshotId,
-                        contentUri = "content://com.android.providers.downloads.documents/document/104",
-                        displayName = "Alpha_Architecture_v2.pdf",
-                        mimeType = "application/pdf",
-                        fileSizeBytes = 4_200_000L
-                    )
-                ),
-                notes = listOf(
-                    NoteItem(
-                        id = UUID.randomUUID().toString(),
-                        snapshotId = snapshotId,
-                        content = "Finalize multi-region database replication SLA before client sync."
-                    ),
-                    NoteItem(
-                        id = UUID.randomUUID().toString(),
-                        snapshotId = snapshotId,
-                        content = "Review whiteboard sticky notes from 10am standup."
-                    )
-                ),
-                images = listOf(
-                    ImageArtifact(
-                        id = UUID.randomUUID().toString(),
-                        snapshotId = snapshotId,
-                        localFilePath = "/data/user/0/com.example.contextos/files/standup_board_alpha.jpg",
-                        ocrRawText = "Q4 Goals: 1. P99 latency < 200ms 2. Zero-downtime migration 3. SOC2 compliance"
-                    )
-                ),
-                aiSummary = AiSummary(
-                    id = UUID.randomUUID().toString(),
-                    snapshotId = snapshotId,
-                    executiveBrief = "Context focused on Project Alpha architecture review and cost estimation. Two open PR links, architecture PDF, and standup whiteboard notes loaded.",
-                    nextActions = listOf(
-                        "Review Q4 latency targets in whiteboard notes",
-                        "Confirm billing alert threshold in Cloud Console",
-                        "Review PDF section 4 on database replication"
-                    ),
-                    modelVersion = "gemini-nano-v1"
-                )
-            )
+            val sample = SampleData.getProjectAlpha(snapshotId = UUID.randomUUID().toString())
             saveSnapshotUseCase(sample)
             _events.emit(ContextListEvent.ShowSnackbar("Created sample \"Project Alpha\""))
+        }
+    }
+
+    fun seedSampleProjectBeta() {
+        viewModelScope.launch {
+            val sample = SampleData.getProjectBeta(snapshotId = UUID.randomUUID().toString())
+            saveSnapshotUseCase(sample)
+            _events.emit(ContextListEvent.ShowSnackbar("Created sample \"Project Beta\""))
+        }
+    }
+
+    fun seedSampleWorkspaces() {
+        viewModelScope.launch {
+            saveSnapshotUseCase(SampleData.getProjectAlpha(snapshotId = UUID.randomUUID().toString()))
+            saveSnapshotUseCase(SampleData.getProjectBeta(snapshotId = UUID.randomUUID().toString()))
+            _events.emit(ContextListEvent.ShowSnackbar("Loaded sample contexts (Project Alpha & Beta)"))
         }
     }
 }

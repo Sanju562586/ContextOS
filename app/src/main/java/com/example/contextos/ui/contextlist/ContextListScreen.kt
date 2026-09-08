@@ -34,6 +34,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -62,6 +63,7 @@ fun ContextListScreen(
     viewModel: ContextListViewModel,
     onSnapshotClick: (ContextSnapshot) -> Unit,
     onVoiceClick: () -> Unit,
+    onSaveContextClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -116,6 +118,13 @@ fun ContextListScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onSaveContextClick) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "Save Context",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     IconButton(onClick = onVoiceClick) {
                         Icon(
                             imageVector = Icons.Filled.Mic,
@@ -131,9 +140,9 @@ fun ContextListScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { viewModel.seedSampleProjectAlpha() },
-                icon = { Icon(Icons.Filled.Add, contentDescription = "Add Context") },
-                text = { Text("Add Sample Project") },
+                onClick = onSaveContextClick,
+                icon = { Icon(Icons.Filled.Add, contentDescription = "Save Current Context") },
+                text = { Text("Save Current Context") },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
@@ -171,7 +180,8 @@ fun ContextListScreen(
                 is ContextListUiState.Success -> {
                     if (state.snapshots.isEmpty()) {
                         EmptyStateView(
-                            onSeedClick = { viewModel.seedSampleProjectAlpha() }
+                            onSaveClick = onSaveContextClick,
+                            onSeedClick = { viewModel.seedSampleWorkspaces() }
                         )
                     } else {
                         LazyColumn(
@@ -264,6 +274,7 @@ private fun QuickResumeHeader(
 
 @Composable
 private fun EmptyStateView(
+    onSaveClick: () -> Unit,
     onSeedClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -310,6 +321,21 @@ private fun EmptyStateView(
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
+            onClick = onSaveClick,
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Save Current Context")
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        OutlinedButton(
             onClick = onSeedClick,
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -319,7 +345,7 @@ private fun EmptyStateView(
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Create \"Project Alpha\" Sample")
+            Text("Load Sample Workspaces (Alpha & Beta)")
         }
     }
 }
