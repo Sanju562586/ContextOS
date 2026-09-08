@@ -41,7 +41,8 @@ class ContextListViewModelTest {
             saveSnapshotUseCase = SaveSnapshotUseCase(fakeRepository),
             deleteSnapshotUseCase = DeleteSnapshotUseCase(fakeRepository),
             togglePinSnapshotUseCase = TogglePinSnapshotUseCase(fakeRepository),
-            markSnapshotRestoredUseCase = MarkSnapshotRestoredUseCase(fakeRepository)
+            markSnapshotRestoredUseCase = MarkSnapshotRestoredUseCase(fakeRepository),
+            contextRestoreManager = FakeContextRestoreManager()
         )
     }
 
@@ -117,6 +118,83 @@ class ContextListViewModelTest {
         val snapshots = (viewModel.uiState.value as ContextListUiState.Success).snapshots
         assertEquals(0, snapshots.size)
         collectJob.cancel()
+    }
+
+    @Test
+    fun onResumeClicked_triggersRestoreQueue() = runTest(testDispatcher) {
+        val collectJob1 = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        val collectJob2 = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.restoreProgress.collect()
+        }
+
+        viewModel.seedSampleProjectAlpha()
+        testScheduler.advanceUntilIdle()
+
+        val snapshot = (viewModel.uiState.value as ContextListUiState.Success).snapshots.first()
+        viewModel.onResumeClicked(snapshot)
+        testScheduler.advanceUntilIdle()
+
+        val progress = viewModel.restoreProgress.value
+        org.junit.Assert.assertNotNull(progress)
+        org.junit.Assert.assertTrue(progress!!.isComplete)
+
+        viewModel.dismissRestore()
+        org.junit.Assert.assertNull(viewModel.restoreProgress.value)
+
+        collectJob1.cancel()
+        collectJob2.cancel()
+    }
+}
+
+private class FakeContextRestoreManager : com.example.contextos.restore.ContextRestoreManager {
+    override suspend fun restoreContext(snapshot: ContextSnapshot): com.example.contextos.restore.ContextRestoreProgress {
+        return com.example.contextos.restore.ContextRestoreProgress(
+            snapshotId = snapshot.id,
+            snapshotName = snapshot.name,
+            totalItems = snapshot.items.size,
+            completedCount = snapshot.items.size,
+            isComplete = true,
+            statusMessage = "${snapshot.name} Restored",
+            itemResults = emptyList()
+        )
+    }
+
+    override fun restoreContextFlow(snapshot: ContextSnapshot): Flow<com.example.contextos.restore.ContextRestoreProgress> = kotlinx.coroutines.flow.flow {
+        emit(
+            com.example.contextos.restore.ContextRestoreProgress(
+                snapshotId = snapshot.id,
+                snapshotName = snapshot.name,
+                totalItems = snapshot.items.size,
+                completedCount = snapshot.items.size,
+                isComplete = true,
+                statusMessage = "${snapshot.name} Restored",
+                itemResults = emptyList()
+            )
+        )
+    }
+
+    override fun restoreSnapshotByIdFlow(snapshotId: String): Flow<com.example.contextos.restore.ContextRestoreProgress> = kotlinx.coroutines.flow.flow {
+        emit(
+            com.example.contextos.restore.ContextRestoreProgress(
+                snapshotId = snapshotId,
+                snapshotName = "Context",
+                totalItems = 0,
+                completedCount = 0,
+                isComplete = true,
+                statusMessage = "Context Restored",
+                itemResults = emptyList()
+            )
+        )
+    }
+
+    override suspend fun restoreItem(item: com.example.contextos.models.ContextItem): com.example.contextos.restore.ItemRestoreResult {
+        return com.example.contextos.restore.ItemRestoreResult(
+            item = item,
+            status = com.example.contextos.restore.ItemRestoreStatus.SUCCESS,
+            message = "Restored ${item.displayName}"
+        )
     }
 }
 

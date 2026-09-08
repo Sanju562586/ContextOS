@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.contextos.models.ContextSnapshot
 import com.example.contextos.ui.contextlist.components.ContextCard
+import com.example.contextos.ui.restore.RestoreProgressDialog
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,6 +68,7 @@ fun ContextListScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val restoreProgress by viewModel.restoreProgress.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
@@ -216,6 +218,14 @@ fun ContextListScreen(
                     }
                 }
             }
+        }
+
+        // Restoration Queue Dialog
+        restoreProgress?.let { progress ->
+            RestoreProgressDialog(
+                progress = progress,
+                onDismiss = { viewModel.dismissRestore() }
+            )
         }
     }
 }

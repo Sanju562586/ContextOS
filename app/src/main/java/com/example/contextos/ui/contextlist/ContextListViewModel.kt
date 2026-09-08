@@ -9,12 +9,16 @@ import com.example.contextos.domain.usecase.MarkSnapshotRestoredUseCase
 import com.example.contextos.domain.usecase.SaveSnapshotUseCase
 import com.example.contextos.domain.usecase.TogglePinSnapshotUseCase
 import com.example.contextos.models.ContextSnapshot
+import com.example.contextos.restore.ContextRestoreManager
+import com.example.contextos.restore.ContextRestoreProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -39,11 +43,15 @@ class ContextListViewModel @Inject constructor(
     private val saveSnapshotUseCase: SaveSnapshotUseCase,
     private val deleteSnapshotUseCase: DeleteSnapshotUseCase,
     private val togglePinSnapshotUseCase: TogglePinSnapshotUseCase,
-    private val markSnapshotRestoredUseCase: MarkSnapshotRestoredUseCase
+    private val markSnapshotRestoredUseCase: MarkSnapshotRestoredUseCase,
+    private val contextRestoreManager: ContextRestoreManager
 ) : ViewModel() {
 
     private val _events = MutableSharedFlow<ContextListEvent>()
     val events: SharedFlow<ContextListEvent> = _events.asSharedFlow()
+
+    private val _restoreProgress = MutableStateFlow<ContextRestoreProgress?>(null)
+    val restoreProgress: StateFlow<ContextRestoreProgress?> = _restoreProgress.asStateFlow()
 
     val uiState: StateFlow<ContextListUiState> = getSnapshotsUseCase()
         .map<List<ContextSnapshot>, ContextListUiState> { snapshots ->
@@ -58,10 +66,15 @@ class ContextListViewModel @Inject constructor(
 
     fun onResumeClicked(snapshot: ContextSnapshot) {
         viewModelScope.launch {
-            markSnapshotRestoredUseCase(snapshot.id)
             _events.emit(ContextListEvent.LaunchRestore(snapshot))
-            _events.emit(ContextListEvent.ShowSnackbar("Restoring \"${snapshot.name}\"..."))
+            contextRestoreManager.restoreContextFlow(snapshot).collect { progress ->
+                _restoreProgress.value = progress
+            }
         }
+    }
+
+    fun dismissRestore() {
+        _restoreProgress.value = null
     }
 
     fun onPinToggled(snapshotId: String, isPinned: Boolean) {

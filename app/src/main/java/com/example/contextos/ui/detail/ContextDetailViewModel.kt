@@ -15,6 +15,8 @@ import com.example.contextos.domain.usecase.MarkSnapshotRestoredUseCase
 import com.example.contextos.domain.usecase.SaveContextItemUseCase
 import com.example.contextos.models.ContextItem
 import com.example.contextos.models.ContextSnapshot
+import com.example.contextos.restore.ContextRestoreManager
+import com.example.contextos.restore.ContextRestoreProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,7 +46,8 @@ class ContextDetailViewModel @Inject constructor(
     private val documentCaptureModule: DocumentCaptureModule,
     private val urlCaptureModule: UrlCaptureModule,
     private val noteCaptureModule: NoteCaptureModule,
-    private val imageCaptureModule: ImageCaptureModule
+    private val imageCaptureModule: ImageCaptureModule,
+    private val contextRestoreManager: ContextRestoreManager
 ) : ViewModel() {
 
     private val _snapshotId = MutableStateFlow<String?>(null)
@@ -52,6 +55,9 @@ class ContextDetailViewModel @Inject constructor(
 
     private val _availableApps = MutableStateFlow<List<AppMetadata>>(emptyList())
     val availableApps: StateFlow<List<AppMetadata>> = _availableApps.asStateFlow()
+
+    private val _restoreProgress = MutableStateFlow<ContextRestoreProgress?>(null)
+    val restoreProgress: StateFlow<ContextRestoreProgress?> = _restoreProgress.asStateFlow()
 
     private var pendingCameraFilePath: String? = null
 
@@ -83,10 +89,24 @@ class ContextDetailViewModel @Inject constructor(
         }
     }
 
+    fun restore(snapshot: ContextSnapshot) {
+        viewModelScope.launch {
+            contextRestoreManager.restoreContextFlow(snapshot).collect { progress ->
+                _restoreProgress.value = progress
+            }
+        }
+    }
+
     fun restore(snapshotId: String) {
         viewModelScope.launch {
-            markSnapshotRestoredUseCase(snapshotId)
+            contextRestoreManager.restoreSnapshotByIdFlow(snapshotId).collect { progress ->
+                _restoreProgress.value = progress
+            }
         }
+    }
+
+    fun dismissRestore() {
+        _restoreProgress.value = null
     }
 
     fun addApp(packageName: String, appName: String) {

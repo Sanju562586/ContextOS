@@ -73,6 +73,7 @@ import com.example.contextos.capture.modules.AppMetadata
 import com.example.contextos.models.ContextItem
 import com.example.contextos.models.ContextItemType
 import com.example.contextos.models.ContextSnapshot
+import com.example.contextos.ui.restore.RestoreProgressDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +90,7 @@ fun ContextDetailScreen(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val availableApps by viewModel.availableApps.collectAsStateWithLifecycle()
+    val restoreProgress by viewModel.restoreProgress.collectAsStateWithLifecycle()
 
     var showAppPickerDialog by remember { mutableStateOf(false) }
     var showAddUrlDialog by remember { mutableStateOf(false) }
@@ -161,7 +163,7 @@ fun ContextDetailScreen(
                     Box(modifier = Modifier.padding(16.dp)) {
                         Button(
                             onClick = {
-                                viewModel.restore(snapshot.id)
+                                viewModel.restore(snapshot)
                                 onResumeClick(snapshot)
                             },
                             modifier = Modifier
@@ -257,6 +259,14 @@ fun ContextDetailScreen(
                 imagePickerLauncher.launch("image/*")
             },
             onDismiss = { showImageOptionDialog = false }
+        )
+    }
+
+    // Restoration Queue Dialog
+    restoreProgress?.let { progress ->
+        RestoreProgressDialog(
+            progress = progress,
+            onDismiss = { viewModel.dismissRestore() }
         )
     }
 }

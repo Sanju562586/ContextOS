@@ -73,6 +73,11 @@ class ContextDetailViewModelTest {
         urlCaptureModule = UrlCaptureModule()
         noteCaptureModule = NoteCaptureModule()
         imageCaptureModule = ImageCaptureModule(context)
+        val restoreManager = com.example.contextos.restore.ContextRestoreManagerImpl(
+            context = context,
+            getSnapshotByIdUseCase = GetSnapshotByIdUseCase(fakeRepository),
+            markSnapshotRestoredUseCase = MarkSnapshotRestoredUseCase(fakeRepository)
+        ).apply { defaultItemDelayMillis = 0L }
 
         viewModel = ContextDetailViewModel(
             getSnapshotByIdUseCase = GetSnapshotByIdUseCase(fakeRepository),
@@ -83,7 +88,8 @@ class ContextDetailViewModelTest {
             documentCaptureModule = documentCaptureModule,
             urlCaptureModule = urlCaptureModule,
             noteCaptureModule = noteCaptureModule,
-            imageCaptureModule = imageCaptureModule
+            imageCaptureModule = imageCaptureModule,
+            contextRestoreManager = restoreManager
         )
     }
 
@@ -334,6 +340,38 @@ class ContextDetailViewModelTest {
         assertNotNull(images.first().imageUri)
 
         job.cancel()
+    }
+
+    @Test
+    fun restore_triggersRestorationQueueAndUpdatesProgress() = runTest(testDispatcher) {
+        val job1 = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        val job2 = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.restoreProgress.collect {}
+        }
+
+        viewModel.loadSnapshot(testSnapshotId)
+        viewModel.addNote("Task Notes")
+        viewModel.addUrl("https://example.com", "Example")
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as ContextDetailUiState.Success
+        viewModel.restore(state.snapshot)
+        testScheduler.advanceUntilIdle()
+
+        val progress = viewModel.restoreProgress.value
+        assertNotNull(progress)
+        assertTrue(progress!!.isComplete)
+        assertEquals(2, progress.totalItems)
+        assertEquals(2, progress.completedCount)
+        assertEquals(2, progress.successCount)
+
+        viewModel.dismissRestore()
+        org.junit.Assert.assertNull(viewModel.restoreProgress.value)
+
+        job1.cancel()
+        job2.cancel()
     }
 }
 
