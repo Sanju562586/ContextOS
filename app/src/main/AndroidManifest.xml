@@ -2,13 +2,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Audio recording permission for voice command recognition -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <!-- Special permission to inspect foreground app usage timestamps if user grants Special Access -->
     <uses-permission
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
-    <!-- Query installed launchable applications on Android 11+ (API 30+) -->
+    <!-- Queries for installed apps and Speech Recognition services (API 30+) -->
     <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

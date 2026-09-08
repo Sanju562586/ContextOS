@@ -11,6 +11,8 @@ import com.example.contextos.domain.usecase.TogglePinSnapshotUseCase
 import com.example.contextos.models.ContextSnapshot
 import com.example.contextos.restore.ContextRestoreManager
 import com.example.contextos.restore.ContextRestoreProgress
+import com.example.contextos.voice.VoiceCommandManager
+import com.example.contextos.voice.VoiceState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +46,8 @@ class ContextListViewModel @Inject constructor(
     private val deleteSnapshotUseCase: DeleteSnapshotUseCase,
     private val togglePinSnapshotUseCase: TogglePinSnapshotUseCase,
     private val markSnapshotRestoredUseCase: MarkSnapshotRestoredUseCase,
-    private val contextRestoreManager: ContextRestoreManager
+    private val contextRestoreManager: ContextRestoreManager,
+    private val voiceCommandManager: VoiceCommandManager
 ) : ViewModel() {
 
     private val _events = MutableSharedFlow<ContextListEvent>()
@@ -52,6 +55,11 @@ class ContextListViewModel @Inject constructor(
 
     private val _restoreProgress = MutableStateFlow<ContextRestoreProgress?>(null)
     val restoreProgress: StateFlow<ContextRestoreProgress?> = _restoreProgress.asStateFlow()
+
+    private val _showVoiceDialog = MutableStateFlow(false)
+    val showVoiceDialog: StateFlow<Boolean> = _showVoiceDialog.asStateFlow()
+
+    val voiceState: StateFlow<VoiceState> = voiceCommandManager.listeningState
 
     val uiState: StateFlow<ContextListUiState> = getSnapshotsUseCase()
         .map<List<ContextSnapshot>, ContextListUiState> { snapshots ->
@@ -112,5 +120,33 @@ class ContextListViewModel @Inject constructor(
             saveSnapshotUseCase(SampleData.getProjectBeta(snapshotId = UUID.randomUUID().toString()))
             _events.emit(ContextListEvent.ShowSnackbar("Loaded sample contexts (Project Alpha & Beta)"))
         }
+    }
+
+    fun openVoiceDialog(candidateSnapshots: List<ContextSnapshot> = emptyList()) {
+        _showVoiceDialog.value = true
+        voiceCommandManager.startListening(candidateSnapshots.ifEmpty { null })
+    }
+
+    fun closeVoiceDialog() {
+        _showVoiceDialog.value = false
+        voiceCommandManager.stopListening()
+        voiceCommandManager.resetState()
+    }
+
+    fun startVoiceListening(candidateSnapshots: List<ContextSnapshot> = emptyList()) {
+        voiceCommandManager.startListening(candidateSnapshots.ifEmpty { null })
+    }
+
+    fun stopVoiceListening() {
+        voiceCommandManager.stopListening()
+    }
+
+    fun submitManualVoiceCommand(text: String, candidateSnapshots: List<ContextSnapshot> = emptyList()) {
+        voiceCommandManager.processText(text, candidateSnapshots.ifEmpty { null })
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        voiceCommandManager.resetState()
     }
 }

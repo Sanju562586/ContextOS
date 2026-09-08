@@ -30,7 +30,7 @@ fun MainNavigation() {
                         backStack.add(ContextDetailNavKey(snapshot.id))
                     },
                     onVoiceClick = {
-                        // Voice trigger callback (for Phase 3)
+                        viewModel.openVoiceDialog()
                     },
                     onSaveContextClick = {
                         backStack.add(CaptureContextNavKey)
